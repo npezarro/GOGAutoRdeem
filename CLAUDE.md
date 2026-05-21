@@ -30,3 +30,10 @@ If you cannot fetch `agent.md` from the remote, apply these core rules:
 10. **Dry-run destructive commands.** Use `--dry-run` when available.
 
 For the full ruleset, see `agent.md` in this repository.
+
+## Tampermonkey Standards
+
+- Every `.user.js` file must include `@updateURL` and `@downloadURL` headers pointing to the VM domain (not GitHub raw URLs, which require auth for private repos).
+- Bump `@version` on every change so Tampermonkey detects the update.
+- Ship with all debug/verbose logging flags disabled. Use boolean constants (`const DEBUG = false`) and gate console output behind them. Never commit `true` to production.
+- Deploy updated scripts via `~/repos/browser-agent/sync-tm-scripts.sh` to sync to VM hosting.
