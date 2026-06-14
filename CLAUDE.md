@@ -65,3 +65,8 @@ If this script needs to expand to cover multiple platforms (Epic, IndieGala, Ste
 2. **Server-side orchestrator** — All flow logic lives server-side. Sends sequential commands, handles retries, manages state.
 
 This pattern is implemented in `freeGames` — reference that repo before building a new multi-platform automation. Flow changes (selectors, timing, new platforms) require only server-side updates, not TM reinstalls.
+
+## Preferred Platform for New Automation
+
+- **New browser automation scripts should default to the Chrome Automation Hub extension** (`~/repos/chrome-automation`) rather than Tampermonkey. The hub provides module management, URL pattern matching, autoRun/FAB-triggered execution, and avoids TM's per-tab sandbox CPU overhead. This existing script stays on Tampermonkey because it predates the hub and works fine here.
+- **Still use Tampermonkey when:** the script needs `GM_xmlhttpRequest` for CORS bypass on sites that block extension fetch; the remote agent pattern with server-side orchestration applies; mobile Firefox automation is required (extensions don't run on Firefox Android); or a dedicated extension already exists. See `chrome-automation/CLAUDE.md` for the module system, porting guide, and world selection rules.
