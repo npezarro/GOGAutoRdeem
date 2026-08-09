@@ -70,3 +70,31 @@ This pattern is implemented in `freeGames` — reference that repo before buildi
 
 - **New browser automation scripts should default to the Chrome Automation Hub extension** (`~/repos/chrome-automation`) rather than Tampermonkey. The hub provides module management, URL pattern matching, autoRun/FAB-triggered execution, and avoids TM's per-tab sandbox CPU overhead. This existing script stays on Tampermonkey because it predates the hub and works fine here.
 - **Still use Tampermonkey when:** the script needs `GM_xmlhttpRequest` for CORS bypass on sites that block extension fetch; the remote agent pattern with server-side orchestration applies; mobile Firefox automation is required (extensions don't run on Firefox Android); or a dedicated extension already exists. See `chrome-automation/CLAUDE.md` for the module system, porting guide, and world selection rules.
+
+## DOM Interaction Gotchas (Click-Driving Automation)
+
+From `agentGuidance/guidance/tampermonkey.md`, incorporated here because this script's
+entire job is clicking real buttons ("Continue", "Redeem"). A click that silently does
+nothing means the key is never redeemed, with no error anywhere — the hardest failure
+mode to notice. Three patterns cause it:
+
+- **Re-query selectors on every attempt, and verify the click actually did something.**
+  Modern frameworks (React, Vue, Lit) replace DOM nodes on each state update, so a cached
+  element reference is detached after the first click and any later click lands on a node
+  no longer in the document — no exception, just silence. `poll()` already re-queries via
+  `findButtonByText()` each tick; keep it that way. It does, however, set `clickedContinue`
+  / `clickedRedeem` immediately after `.click()`, which *assumes* the click landed. Prefer
+  a stall guard: confirm the expected state actually changed (button gone or disabled, URL
+  or confirmation text changed) before marking the step done, and retry otherwise.
+- **Prefer `<button>` matches over generic text matches.** A non-interactive wrapper
+  `<div>` or `<span>` carrying the same visible text often appears BEFORE the real
+  `<button>` in the DOM, and clicking it does nothing. Query order: `button` elements first
+  (filtered by innerText or aria-label), then `[aria-label*="..."]` for icon-only controls,
+  generic text search last. `findButtonByText()` already restricts itself to
+  `button, [role="button"], a.btn, input[type="submit"]` — do not widen it into a bare text
+  scan over all elements.
+- **Dismiss cookie/consent banners before interacting.** Consent overlays intercept all
+  pointer events, so a click on a covered element fails silently. Dismiss them (ALLOW ALL /
+  REJECT ALL / Accept) at the start of the flow, before any other interaction. If a
+  well-targeted click has no effect, check for an overlay as the *first* diagnostic —
+  before assuming the selector rotted or blaming reCAPTCHA timing.
